@@ -40,7 +40,7 @@ int main( int argc, char* argv[] ) {
         cr = randab(RMIN, RMAX);
 
         // Write coordinates to the file
-        fprintf(file, "%.2f %.2f %.2f\n", cx, cy, cr);
+        fprintf(file, "%f %f %f\n", cx, cy, cr);
     }
 
     fclose(file);

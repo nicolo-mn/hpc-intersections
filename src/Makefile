@@ -56,6 +56,7 @@ omp-test: serial-dbg omp-dbg $(GEN-EXE)
 			echo "Errore: I file di output per l'iterazione $${i} sono diversi." ; \
 		exit 1; \
 		fi; \
+		echo "Iterazione $${i} OK"; \
 	done
 
 clean:
