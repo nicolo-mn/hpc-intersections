@@ -1,0 +1,15 @@
+.vscode*
+*.exe
+*.out
+*.avi
+
+# *.pgm
+# *.ppm
+# *
+# !.gitignore
+# !.gitattributes
+# !*.c
+# !*.h
+# !*.txt
+# !*.in
+# !*.cu
