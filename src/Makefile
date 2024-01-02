@@ -19,6 +19,7 @@ EXE:=circles
 CFLAGS=-std=c99 -Wall -Wpedantic
 LDLIBS+=-lm
 #
+OMP-FLAGS:=-fopenmp
 OMP-EXE:=omp-circles
 CUDA-EXE:=cuda-circles
 GEN-EXE:=gen-circles
@@ -37,7 +38,9 @@ movie: $(EXE).movie
 	ffmpeg -y -i "circles-%05d.png" -vcodec mpeg4 circles.avi
 
 #
-omp-dbg: CFLAGS+=-DDBG
+$(OMP-EXE): CFLAGS+=$(OMP-FLAGS)
+
+omp-dbg: CFLAGS+=-DDBG $(OMP-FLAGS)
 omp-dbg: $(OMP-EXE).c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
@@ -46,7 +49,7 @@ serial-dbg: $(EXE).c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
 omp-test: serial-dbg omp-dbg $(GEN-EXE)	
-	for i in $$(seq 1 3) ; do \
+	for i in $$(seq 1 1) ; do \
 		./$(GEN-EXE) 10000; \
 		./serial-dbg > res_serial_time.txt ; \
 		./omp-dbg > res_omp_time.txt ; \

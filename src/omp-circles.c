@@ -71,14 +71,14 @@ typedef struct {
 } circle_t;
 
 /* These constants can be replaced with #define's if necessary */
-const float XMIN = 0.0;
-const float XMAX = 1000.0;
-const float YMIN = 0.0;
-const float YMAX = 1000.0;
-const float RMIN = 10.0;
-const float RMAX = 100.0;
-const float EPSILON = 1e-5;
-const float K = 1.5;
+#define XMIN 0.0f
+#define XMAX 1000.0f
+#define YMIN 0.0f
+#define YMAX 1000.0f
+#define RMIN 10.0f
+#define RMAX 100.0f
+#define EPSILON 1e-5f
+#define K 1.5f
 
 int ncircles;
 circle_t *circles = NULL;
