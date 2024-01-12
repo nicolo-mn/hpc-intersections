@@ -122,6 +122,7 @@ void init_circles(int n)
  */
 void reset_displacements( void )
 {
+    #pragma omp parallel for default(none) shared(circles, circles_dx, circles_dy, ncircles)
     for (int i=0; i<ncircles; i++) {
         circles_dx[i] = circles_dy[i] = 0.0;
     }
@@ -135,6 +136,10 @@ void reset_displacements( void )
 int compute_forces( void )
 {
     int n_intersections = 0;
+    #pragma omp parallel for default(none) shared(circles, ncircles) \
+    reduction(+:n_intersections) \
+    reduction(+:circles_dx[:ncircles]) \
+    reduction(+:circles_dy[:ncircles])
     for (int i=0; i<ncircles; i++) {
         for (int j=i+1; j<ncircles; j++) {
             const float deltax = circles[j].x - circles[i].x;
@@ -168,6 +173,7 @@ int compute_forces( void )
  */
 void move_circles( void )
 {
+    #pragma omp parallel for default(none) shared(circles, circles_dx, circles_dy, ncircles)
     for (int i=0; i<ncircles; i++) {
         circles[i].x += circles_dx[i];
         circles[i].y += circles_dy[i];
