@@ -181,6 +181,9 @@ void move_circles( void )
     }
 }
 
+/**
+ * Updates the position and the resets the displacements of each circle.
+ */
 void update_circles( void ) {
     #pragma omp parallel default(none) shared(circles, circles_dx, circles_dy, ncircles)
     {
