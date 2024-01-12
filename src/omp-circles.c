@@ -122,7 +122,7 @@ void init_circles(int n)
  */
 void reset_displacements( void )
 {
-    #pragma omp parallel for default(none) shared(circles, circles_dx, circles_dy, ncircles)
+    #pragma omp for
     for (int i=0; i<ncircles; i++) {
         circles_dx[i] = circles_dy[i] = 0.0;
     }
@@ -139,7 +139,8 @@ int compute_forces( void )
     #pragma omp parallel for default(none) shared(circles, ncircles) \
     reduction(+:n_intersections) \
     reduction(+:circles_dx[:ncircles]) \
-    reduction(+:circles_dy[:ncircles])
+    reduction(+:circles_dy[:ncircles]) \
+    schedule(dynamic, 32)
     for (int i=0; i<ncircles; i++) {
         for (int j=i+1; j<ncircles; j++) {
             const float deltax = circles[j].x - circles[i].x;
@@ -173,10 +174,18 @@ int compute_forces( void )
  */
 void move_circles( void )
 {
-    #pragma omp parallel for default(none) shared(circles, circles_dx, circles_dy, ncircles)
+    #pragma omp for
     for (int i=0; i<ncircles; i++) {
         circles[i].x += circles_dx[i];
         circles[i].y += circles_dy[i];
+    }
+}
+
+void update_circles( void ) {
+    #pragma omp parallel default(none) shared(circles, circles_dx, circles_dy, ncircles)
+    {
+        move_circles();
+        reset_displacements();
     }
 }
 
@@ -235,9 +244,8 @@ int main( int argc, char* argv[] )
 #endif
     for (int it=0; it<iterations; it++) {
         const double tstart_iter = hpc_gettime();
-        reset_displacements();
         const int n_overlaps = compute_forces();
-        move_circles();
+        update_circles();
         const double elapsed_iter = hpc_gettime() - tstart_iter;
 #ifdef MOVIE
         dump_circles(it+1);
