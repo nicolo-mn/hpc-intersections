@@ -67,7 +67,6 @@ and then assembled to produce the movie `circles.avi`:
 typedef struct {
     float x, y;   /* coordinates of center */
     float r;      /* radius */
-    float dx, dy; /* displacements due to interactions with other circles */
 } circle_t;
 
 /* These constants can be replaced with #define's if necessary */
@@ -82,6 +81,9 @@ typedef struct {
 
 int ncircles;
 circle_t *circles = NULL;
+/* displacements due to interactions with other circles */
+float* circles_dx = NULL;
+float* circles_dy = NULL;
 
 /**
  * Return a random float in [a, b]
@@ -103,25 +105,15 @@ void init_circles(int n)
     ncircles = n;
     circles = (circle_t*)malloc(n * sizeof(*circles));
     assert(circles != NULL);
-#ifdef DBG 
-    FILE *file = fopen("init.txt", "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file.\n");
-        exit(1);
-    }
-#endif
+    circles_dx = (float*)malloc(n * sizeof(*circles_dx));
+    assert(circles_dx != NULL);
+    circles_dy = (float*)malloc(n * sizeof(*circles_dy));
+    assert(circles_dy != NULL);
     for (int i=0; i<n; i++) {
-#ifdef DBG
-        if (fscanf(file, "%f %f %f", &circles[i].x, &circles[i].y, &circles[i].r) != 3) {
-            fprintf(stderr, "Error reading file.\n");
-            exit(1);
-        }
-#else
         circles[i].x = randab(XMIN, XMAX);
         circles[i].y = randab(YMIN, YMAX);
         circles[i].r = randab(RMIN, RMAX);
-#endif
-        circles[i].dx = circles[i].dy = 0.0;
+        circles_dx[i] = circles_dy[i] = 0.0;
     }
 }
 
@@ -131,7 +123,7 @@ void init_circles(int n)
 void reset_displacements( void )
 {
     for (int i=0; i<ncircles; i++) {
-        circles[i].dx = circles[i].dy = 0.0;
+        circles_dx[i] = circles_dy[i] = 0.0;
     }
 }
 
@@ -160,10 +152,10 @@ int compute_forces( void )
                 // avoid division by zero
                 const float overlap_x = overlap / (dist + EPSILON) * deltax;
                 const float overlap_y = overlap / (dist + EPSILON) * deltay;
-                circles[i].dx -= overlap_x / K;
-                circles[i].dy -= overlap_y / K;
-                circles[j].dx += overlap_x / K;
-                circles[j].dy += overlap_y / K;
+                circles_dx[i] -= overlap_x / K;
+                circles_dy[i] -= overlap_y / K;
+                circles_dx[j] += overlap_x / K;
+                circles_dy[j] += overlap_y / K;
             }
         }
     }
@@ -177,8 +169,8 @@ int compute_forces( void )
 void move_circles( void )
 {
     for (int i=0; i<ncircles; i++) {
-        circles[i].x += circles[i].dx;
-        circles[i].y += circles[i].dy;
+        circles[i].x += circles_dx[i];
+        circles[i].y += circles_dy[i];
     }
 }
 
