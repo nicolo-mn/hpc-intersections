@@ -62,4 +62,4 @@ $(OMP-EXE): $(OMP-EXE).c
 # 	done
 
 clean:
-	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(CUDA-EXE) $(GEN-EXE) serial-dbg omp-dbg cuda-dbg *.txt *.o *~ *.gp *.png *.avi 
+	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(CUDA-EXE) $(GEN-EXE) serial-dbg omp-dbg cuda-dbg cuda-circles *.txt *.o *~ *.gp *.png *.avi 
