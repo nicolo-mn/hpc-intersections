@@ -81,7 +81,6 @@ typedef struct {
 #define EPSILON 1e-5f
 #define K 1.5f
 
-int ncircles;
 circle_t *circles = NULL;
 
 /**
@@ -177,7 +176,6 @@ float randab(float a, float b)
 void init_circles(int n)
 {
     assert(circles == NULL);
-    ncircles = n;
     circles = (circle_t*)malloc(sizeof(*circles));  assert(circles != NULL);
     circles->x = (float*)malloc(n*sizeof(*circles->x)); assert(circles->x != NULL);
     circles->y = (float*)malloc(n*sizeof(*circles->y)); assert(circles->y != NULL);
