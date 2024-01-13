@@ -84,35 +84,26 @@ typedef struct {
 int ncircles;
 circle_t *circles = NULL;
 
+/**
+ * Compute the force acting on each circle; returns the number of
+ * overlapping pairs of circles (each overlapping pair must be counted
+ * only once).
+ */
 __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
-    __shared__ int n_intersections[BLKDIM]; 
+    __shared__ int n_intersections[BLKDIM];
     const int gindex = threadIdx.x + blockIdx.x * blockDim.x;
     const int lindex = threadIdx.x;
+    float my_dx = 0.0;
+    float my_dy = 0.0;
     int bsize = blockDim.x / 2;
+
+    if (gindex == 0) {
+        *result = 0;
+    }
 
     if (gindex < ncircles) {
         n_intersections[lindex] = 0;
-        for (int i=0; i<gindex; i++) {
-            const float deltax = circles->x[gindex] - circles->x[i];
-            const float deltay = circles->y[gindex] - circles->y[i];
-            /* hypotf(x,y) computes sqrtf(x*x + y*y) avoiding
-               overflow. This function is defined in <math.h>, and
-               should be available also on CUDA. In case of troubles,
-               it is ok to use sqrtf(x*x + y*y) instead. */
-            const float dist = hypotf(deltax, deltay);
-            const float Rsum = circles->r[i] + circles->r[gindex];
-            if (dist < Rsum - EPSILON) {
-                const float overlap = Rsum - dist;
-                assert(overlap > 0.0);
-                // avoid division by zero
-                const float overlap_x = overlap / (dist + EPSILON) * deltax;
-                const float overlap_y = overlap / (dist + EPSILON) * deltay;
-                circles->dx[gindex] += overlap_x / K;
-                circles->dy[gindex] += overlap_y / K;
-            }      
-        }
-
-        for (int j=gindex+1; j<ncircles; j++) {
+        for (int j=0; j<ncircles; j++) {
             const float deltax = circles->x[j] - circles->x[gindex];
             const float deltay = circles->y[j] - circles->y[gindex];
             /* hypotf(x,y) computes sqrtf(x*x + y*y) avoiding
@@ -121,24 +112,28 @@ __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
                it is ok to use sqrtf(x*x + y*y) instead. */
             const float dist = hypotf(deltax, deltay);
             const float Rsum = circles->r[gindex] + circles->r[j];
-            if (dist < Rsum - EPSILON) {
-                n_intersections[lindex]++;
+            if (dist < Rsum - EPSILON && j != gindex) {
+                if (j > gindex)
+                    n_intersections[lindex]++;
                 const float overlap = Rsum - dist;
                 assert(overlap > 0.0);
                 // avoid division by zero
                 const float overlap_x = overlap / (dist + EPSILON) * deltax;
                 const float overlap_y = overlap / (dist + EPSILON) * deltay;
-                circles->dx[gindex] -= overlap_x / K;
-                circles->dy[gindex] -= overlap_y / K;
+                my_dx -= overlap_x / K;
+                my_dy -= overlap_y / K;
             }
         }
+
+        circles->dx[gindex] = my_dx;
+        circles->dy[gindex] = my_dy;
 
         /* wait for all threads to finish the copy operation */
         __syncthreads(); 
 
         /* All threads within the block cooperate to compute the local sum */
         while ( bsize > 0 ) {
-            if ( lindex < bsize ) {
+            if ( lindex < bsize && gindex + bsize < ncircles) {
                 n_intersections[lindex] += n_intersections[lindex + bsize];
             }
             bsize = bsize / 2; 
@@ -150,6 +145,18 @@ __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
         if ( 0 == lindex ) {
             atomicAdd(result, n_intersections[0]);
         }
+    }
+}
+
+/**
+ * Updates the position and the resets the displacements of each circle.
+ */
+__global__ void update_circles( circle_t *circles, int ncircles ) {
+    const int gindex = threadIdx.x + blockIdx.x * blockDim.x;
+    if (gindex < ncircles) {
+        circles->x[gindex] += circles->dx[gindex];
+        circles->y[gindex] += circles->dy[gindex];
+        circles->dx[gindex] = circles->dy[gindex] = 0.0;
     }
 }
 
@@ -185,63 +192,6 @@ void init_circles(int n)
     }
 }
 
-/**
- * Set all displacements to zero.
- */
-void reset_displacements( void )
-{
-    for (int i=0; i<ncircles; i++) {
-        circles->dx[i] = circles->dy[i] = 0.0;
-    }
-}
-
-/**
- * Compute the force acting on each circle; returns the number of
- * overlapping pairs of circles (each overlapping pair must be counted
- * only once).
- */
-int compute_forces( void )
-{
-    int n_intersections = 0;
-    for (int i=0; i<ncircles; i++) {
-        for (int j=i+1; j<ncircles; j++) {
-            const float deltax = circles->x[j] - circles->x[i];
-            const float deltay = circles->y[j] - circles->y[i];
-            /* hypotf(x,y) computes sqrtf(x*x + y*y) avoiding
-               overflow. This function is defined in <math.h>, and
-               should be available also on CUDA. In case of troubles,
-               it is ok to use sqrtf(x*x + y*y) instead. */
-            const float dist = hypotf(deltax, deltay);
-            const float Rsum = circles->r[i] + circles->r[j];
-            if (dist < Rsum - EPSILON) {
-                n_intersections++;
-                const float overlap = Rsum - dist;
-                assert(overlap > 0.0);
-                // avoid division by zero
-                const float overlap_x = overlap / (dist + EPSILON) * deltax;
-                const float overlap_y = overlap / (dist + EPSILON) * deltay;
-                circles->dx[i] -= overlap_x / K;
-                circles->dy[i] -= overlap_y / K;
-                circles->dx[j] += overlap_x / K;
-                circles->dy[j] += overlap_y / K;
-            }
-        }
-    }
-    return n_intersections;
-}
-
-/**
- * Move the circles to a new position according to the forces acting
- * on each one.
- */
-void move_circles( void )
-{
-    for (int i=0; i<ncircles; i++) {
-        circles->x[i] += circles->dx[i];
-        circles->y[i] += circles->dy[i];
-    }
-}
-
 #ifdef MOVIE
 /**
  * Dumps the circles into a text file that can be processed using
@@ -254,7 +204,7 @@ void move_circles( void )
 void dump_circles( int iterno )
 {
     char fname[64];
-    snprintf(fname, sizeof(fname), "circles-%05d.gp", iterno);
+    snprintf(fname, sizeof(fname), "circles-cuda-%05d.gp", iterno);
     FILE *out = fopen(fname, "w");
     const float WIDTH = XMAX - XMIN;
     const float HEIGHT = YMAX - YMIN;
@@ -264,9 +214,6 @@ void dump_circles( int iterno )
     fprintf(out, "set yrange [%f:%f]\n", YMIN - HEIGHT*.2, YMAX + HEIGHT*.2 );
     fprintf(out, "set size square\n");
     fprintf(out, "plot '-' with circles notitle\n");
-    cudaSafeCall( cudaMemcpy(circles->x, d_circles->x, n*sizeof(*circles->x), cudaMemcpyDeviceToHost) );
-    cudaSafeCall( cudaMemcpy(circles->y, d_circles->y, n*sizeof(*circles->y), cudaMemcpyDeviceToHost) );
-    cudaSafeCall( cudaMemcpy(circles->r, d_circles->r, n*sizeof(*circles->r), cudaMemcpyDeviceToHost) );
     for (int i=0; i<ncircles; i++) {
         fprintf(out, "%f %f %f\n", circles->x[i], circles->y[i], circles->r[i]);
     }
@@ -300,23 +247,23 @@ int main( int argc, char* argv[] )
 #endif
     int n_overlaps;
     int *d_n_overlaps;
-    cudaSafeCall( cudaMalloc((void**)&d_n_overlaps, sizeof(*d_n_overlaps)) );
     circle_t *d_circles;
     float *d_circles_dx, *d_circles_dy, *d_circles_x, *d_circles_y, *d_circles_r;
-    // Allocations
+    // allocations
+    cudaSafeCall( cudaMalloc((void**)&d_n_overlaps, sizeof(*d_n_overlaps)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles, sizeof(*d_circles)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_x, n*sizeof(*d_circles_x)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_y, n*sizeof(*d_circles_y)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_r, n*sizeof(*d_circles_r)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_dx, n*sizeof(*d_circles_dx)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_dy, n*sizeof(*d_circles_dy)) );
-    // Copies
+    // copies
     cudaSafeCall( cudaMemcpy(d_circles_x, circles->x, n*sizeof(*circles->x), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_y, circles->y, n*sizeof(*circles->y), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_r, circles->r, n*sizeof(*circles->r), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_dx, circles->dx, n*sizeof(*circles->dx), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_dy, circles->dy, n*sizeof(*circles->dy), cudaMemcpyHostToDevice) );
-    // Struct's pointers binding
+    // struct's pointers binding
     cudaSafeCall( cudaMemcpy(&d_circles->x, &d_circles_x, sizeof(d_circles_x), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(&d_circles->y, &d_circles_y, sizeof(d_circles_y), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(&d_circles->r, &d_circles_r, sizeof(d_circles_r), cudaMemcpyHostToDevice) );
@@ -324,25 +271,11 @@ int main( int argc, char* argv[] )
     cudaSafeCall( cudaMemcpy(&d_circles->dy, &d_circles_dy, sizeof(d_circles_dy), cudaMemcpyHostToDevice) );
     for (int it=0; it<iterations; it++) {
         const double tstart_iter = hpc_gettime();
-        n_overlaps = 0;
-        cudaSafeCall( cudaMemcpy(d_n_overlaps, &n_overlaps, sizeof(n_overlaps), cudaMemcpyHostToDevice) );
         compute_forces<<<(n+BLKDIM-1)/BLKDIM, BLKDIM>>>(d_circles, d_n_overlaps, n);
         cudaCheckError();      
         cudaSafeCall( cudaMemcpy(&n_overlaps, d_n_overlaps, sizeof(n_overlaps), cudaMemcpyDeviceToHost) );
-
-        cudaSafeCall( cudaMemcpy(circles->dx, d_circles_dx, n*sizeof(*circles->dx), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->dy, d_circles_dy, n*sizeof(*circles->dy), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->x, d_circles_x, n*sizeof(*circles->x), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->y, d_circles_y, n*sizeof(*circles->y), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->r, d_circles_r, n*sizeof(*circles->r), cudaMemcpyDeviceToHost) );
-        move_circles();
-        reset_displacements();
-        cudaSafeCall( cudaMemcpy(d_circles_x, circles->x, n*sizeof(*circles->x), cudaMemcpyHostToDevice) );
-        cudaSafeCall( cudaMemcpy(d_circles_y, circles->y, n*sizeof(*circles->y), cudaMemcpyHostToDevice) );
-        cudaSafeCall( cudaMemcpy(d_circles_r, circles->r, n*sizeof(*circles->r), cudaMemcpyHostToDevice) );
-        cudaSafeCall( cudaMemcpy(d_circles_dx, circles->dx, n*sizeof(*circles->dx), cudaMemcpyHostToDevice) );
-        cudaSafeCall( cudaMemcpy(d_circles_dy, circles->dy, n*sizeof(*circles->dy), cudaMemcpyHostToDevice) );
-
+        update_circles<<<(n+BLKDIM-1)/BLKDIM, BLKDIM>>>(d_circles, n);
+        cudaCheckError();
         const double elapsed_iter = hpc_gettime() - tstart_iter;
 #ifdef MOVIE
         dump_circles(it+1);
@@ -352,19 +285,19 @@ int main( int argc, char* argv[] )
     const double elapsed_prog = hpc_gettime() - tstart_prog;
     printf("Elapsed time: %f\n", elapsed_prog);
 
-    // cudaSafeCall( cudaFree(d_n_overlaps) );
-    // cudaSafeCall( cudaFree(d_circles->x) );
-    // cudaSafeCall( cudaFree(d_circles->y) );
-    // cudaSafeCall( cudaFree(d_circles->r) );
-    // cudaSafeCall( cudaFree(d_circles->dx) );
-    // cudaSafeCall( cudaFree(d_circles->dy) );
-    // cudaSafeCall( cudaFree(d_circles) );
-    // free(circles->x);
-    // free(circles->y);
-    // free(circles->r);
-    // free(circles->dx);
-    // free(circles->dy);
-    // free(circles);
+    cudaSafeCall( cudaFree(d_n_overlaps) );
+    cudaSafeCall( cudaFree(d_circles_x) );
+    cudaSafeCall( cudaFree(d_circles_y) );
+    cudaSafeCall( cudaFree(d_circles_r) );
+    cudaSafeCall( cudaFree(d_circles_dx) );
+    cudaSafeCall( cudaFree(d_circles_dy) );
+    cudaSafeCall( cudaFree(d_circles) );
+    free(circles->x);
+    free(circles->y);
+    free(circles->r);
+    free(circles->dx);
+    free(circles->dy);
+    free(circles);
 
     return EXIT_SUCCESS;
 }
