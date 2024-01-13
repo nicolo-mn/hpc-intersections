@@ -118,17 +118,6 @@ void init_circles(int n)
 }
 
 /**
- * Set all displacements to zero.
- */
-void reset_displacements( void )
-{
-    #pragma omp for
-    for (int i=0; i<ncircles; i++) {
-        circles_dx[i] = circles_dy[i] = 0.0;
-    }
-}
-
-/**
  * Compute the force acting on each circle; returns the number of
  * overlapping pairs of circles (each overlapping pair must be counted
  * only once).
@@ -169,26 +158,14 @@ int compute_forces( void )
 }
 
 /**
- * Move the circles to a new position according to the forces acting
- * on each one.
- */
-void move_circles( void )
-{
-    #pragma omp for
-    for (int i=0; i<ncircles; i++) {
-        circles[i].x += circles_dx[i];
-        circles[i].y += circles_dy[i];
-    }
-}
-
-/**
  * Updates the position and the resets the displacements of each circle.
  */
 void update_circles( void ) {
-    #pragma omp parallel default(none) shared(circles, circles_dx, circles_dy, ncircles)
-    {
-        move_circles();
-        reset_displacements();
+    #pragma omp parallel for default(none) shared(circles, circles_dx, circles_dy, ncircles)
+    for (int i=0; i<ncircles; i++) {
+        circles[i].x += circles_dx[i];
+        circles[i].y += circles_dy[i];
+        circles_dx[i] = circles_dy[i] = 0.0;
     }
 }
 
