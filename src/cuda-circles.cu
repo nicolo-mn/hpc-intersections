@@ -199,7 +199,7 @@ void init_circles(int n)
  * You may want to completely remove this function from the final
  * version.
  */
-void dump_circles( int iterno )
+void dump_circles( int iterno, int ncircles )
 {
     char fname[64];
     snprintf(fname, sizeof(fname), "circles-cuda-%05d.gp", iterno);
@@ -241,7 +241,7 @@ int main( int argc, char* argv[] )
     init_circles(n);
     const double tstart_prog = hpc_gettime();
 #ifdef MOVIE
-    dump_circles(0);
+    dump_circles(0, n);
 #endif
     int n_overlaps;
     int *d_n_overlaps;
@@ -276,7 +276,10 @@ int main( int argc, char* argv[] )
         cudaCheckError();
         const double elapsed_iter = hpc_gettime() - tstart_iter;
 #ifdef MOVIE
-        dump_circles(it+1);
+        cudaSafeCall( cudaMemcpy(circles->x, d_circles_x, n*sizeof(*circles->x), cudaMemcpyDeviceToHost) );
+        cudaSafeCall( cudaMemcpy(circles->y, d_circles_y, n*sizeof(*circles->y), cudaMemcpyDeviceToHost) );
+        cudaSafeCall( cudaMemcpy(circles->r, d_circles_r, n*sizeof(*circles->r), cudaMemcpyDeviceToHost) );
+        dump_circles(it+1, n);
 #endif
         printf("Iteration %d of %d, %d overlaps (%f s)\n", it+1, iterations, n_overlaps, elapsed_iter);
     }

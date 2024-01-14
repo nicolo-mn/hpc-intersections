@@ -35,31 +35,26 @@ movie: $(EXE).movie
 	for f in *.gp; do echo "Processing $$f"; gnuplot "$$f"; done
 	ffmpeg -y -i "circles-%05d.png" -vcodec mpeg4 circles.avi
 
+$(OMP-EXE).movie: CFLAGS+=-DMOVIE $(OMP-FLAGS)
+$(OMP-EXE).movie: $(OMP-EXE).c
+	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
+
+omp-movie: $(OMP-EXE).movie
+	./$(OMP-EXE).movie 200 500
+	for f in *.gp; do echo "Processing $$f"; gnuplot "$$f"; done
+	ffmpeg -y -i "circles-%05d.png" -vcodec mpeg4 omp-circles.avi
+
+$(CUDA-EXE).movie: $(CUDA-EXE).cu
+	nvcc -DMOVIE $< -o $@ 
+
+cuda-movie: $(CUDA-EXE).movie
+	./$(CUDA-EXE).movie 200 500
+	for f in *.gp; do echo "Processing $$f"; gnuplot "$$f"; done
+	ffmpeg -y -i "circles-%05d.png" -vcodec mpeg4 cuda-circles.avi
+
 $(OMP-EXE): CFLAGS+=$(OMP-FLAGS)
 $(OMP-EXE): $(OMP-EXE).c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
-# omp-dbg: CFLAGS+=-DDBG $(OMP-FLAGS)
-# omp-dbg: $(OMP-EXE).c
-# 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
-
-# serial-dbg: CFLAGS+=-DDBG
-# serial-dbg: $(EXE).c
-# 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
-# 
-# omp-test: serial-dbg omp-dbg $(GEN-EXE)	
-# 	for i in $$(seq 1 1) ; do \
-# 		./$(GEN-EXE) 10000; \
-# 		./serial-dbg > res_serial_time.txt ; \
-# 		./omp-dbg > res_omp_time.txt ; \
-# 		sed 's/([^)]*)//' res_serial_time.txt | head -n -1 > res_serial.txt ; \
-# 		sed 's/([^)]*)//' res_omp_time.txt | head -n -1 > res_omp.txt ; \
-# 		if ! cmp -s res_serial.txt res_omp.txt ; then \
-# 			echo "Errore: I file di output per l'iterazione $${i} sono diversi." ; \
-# 		exit 1; \
-# 		fi; \
-# 		echo "Iterazione $${i} OK"; \
-# 	done
-
 clean:
-	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(CUDA-EXE) $(GEN-EXE) serial-dbg omp-dbg cuda-dbg cuda-circles *.txt *.o *~ *.gp *.png *.avi 
+	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(OMP-EXE).movie $(CUDA-EXE) $(CUDA-EXE).movie *.txt *.o *~ *.gp *.png
