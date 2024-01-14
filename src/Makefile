@@ -56,5 +56,24 @@ $(OMP-EXE): CFLAGS+=$(OMP-FLAGS)
 $(OMP-EXE): $(OMP-EXE).c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
+$(CUDA-EXE): $(CUDA-EXE).cu
+	nvcc $< -o $@
+
 clean:
-	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(OMP-EXE).movie $(CUDA-EXE) $(CUDA-EXE).movie *.txt *.o *~ *.gp *.png
+	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(OMP-EXE).movie $(CUDA-EXE) $(CUDA-EXE).movie *.txt *.o *~ *.gp *.png *.avi
+
+# CFLAGS=-std=c99 -Wall -Wpedantic
+# LDLIBS+=-lm
+# OMP-FLAGS:=-fopenmp
+# OMP-EXE:=omp-circles
+# CUDA-EXE:=cuda-circles
+
+# $(OMP-EXE): CFLAGS+=$(OMP-FLAGS)
+# $(OMP-EXE): $(OMP-EXE).c
+# 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
+
+# $(CUDA-EXE): $(CUDA-EXE).cu
+# 	nvcc $< -o $@
+
+# clean:
+# 	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(OMP-EXE).movie $(CUDA-EXE) $(CUDA-EXE).movie *.txt *.o *~ *.gp *.png
