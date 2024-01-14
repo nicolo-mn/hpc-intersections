@@ -21,10 +21,8 @@ LDLIBS+=-lm
 OMP-FLAGS:=-fopenmp
 OMP-EXE:=omp-circles
 CUDA-EXE:=cuda-circles
-GEN-EXE:=gen-circles
 
-
-ALL: $(EXE) $(OMP-EXE) $(CUDA-EXE) $(GEN-EXE)
+ALL: $(EXE) $(OMP-EXE) $(CUDA-EXE)
 
 $(EXE).movie: CFLAGS+=-DMOVIE
 $(EXE).movie: $(EXE).c
@@ -68,6 +66,8 @@ clean:
 # OMP-EXE:=omp-circles
 # CUDA-EXE:=cuda-circles
 
+# ALL: $(OMP-EXE) $(CUDA-EXE)
+
 # $(OMP-EXE): CFLAGS+=$(OMP-FLAGS)
 # $(OMP-EXE): $(OMP-EXE).c
 # 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
@@ -76,4 +76,4 @@ clean:
 # 	nvcc $< -o $@
 
 # clean:
-# 	\rm -f $(EXE) $(EXE).movie $(OMP-EXE) $(OMP-EXE).movie $(CUDA-EXE) $(CUDA-EXE).movie *.txt *.o *~ *.gp *.png
+# 	\rm -f $(OMP-EXE) $(CUDA-EXE) *.txt *.o *~ *.gp *.png *.avi

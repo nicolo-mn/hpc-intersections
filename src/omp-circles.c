@@ -1,62 +1,6 @@
-/****************************************************************************
- *
- * circles.c - Circles intersection
- *
- * Copyright (C) 2023 by Moreno Marzolla <moreno.marzolla(at)unibo.it>
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- ****************************************************************************/
-
-/***
-% Circles intersection
-% Moreno Marzolla <moreno.marzolla@unibo.it>
-% Last updated on 2023-12-06
-
-This is a serial implementation of the circle intersection program
-described in the specification.
-
-To compile:
-
-        gcc -std=c99 -Wall -Wpedantic circles.c -o circles -lm
-
-To execute:
-
-        ./circles [ncircles [iterations]]
-
-where `ncircles` is the number of circles, and `iterations` is the
-number of iterations to execute.
-
-If you want to produce a movie (this is not required, and should be
-avoided when measuring the performance of the parallel versions of
-this program) compile with:
-
-        gcc -std=c99 -Wall -Wpedantic -DMOVIE circles.c -o circles.movie -lm
-
-and execute with:
-
-        ./circles.movie 200 500
-
-A lot of `circles-xxxxx.gp` files will be produced; these files must
-be processed using `gnuplot` to create individual frames:
-
-        for f in *.gp; do gnuplot "$f"; done
-
-and then assembled to produce the movie `circles.avi`:
-
-        ffmpeg -y -i "circles-%05d.png" -vcodec mpeg4 circles.avi
-
-***/
+/*************************************
+ * Nicolò Monaldini matr: 0001031164 
+ *************************************/
 
 #include "hpc.h"
 #include <stdio.h>
@@ -69,7 +13,6 @@ typedef struct {
     float r;      /* radius */
 } circle_t;
 
-/* These constants can be replaced with #define's if necessary */
 #define XMIN 0.0f
 #define XMAX 1000.0f
 #define YMIN 0.0f
@@ -134,10 +77,6 @@ int compute_forces( void )
         for (int j=i+1; j<ncircles; j++) {
             const float deltax = circles[j].x - circles[i].x;
             const float deltay = circles[j].y - circles[i].y;
-            /* hypotf(x,y) computes sqrtf(x*x + y*y) avoiding
-               overflow. This function is defined in <math.h>, and
-               should be available also on CUDA. In case of troubles,
-               it is ok to use sqrtf(x*x + y*y) instead. */
             const float dist = hypotf(deltax, deltay);
             const float Rsum = circles[i].r + circles[j].r;
             if (dist < Rsum - EPSILON) {
