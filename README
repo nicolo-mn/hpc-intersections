@@ -1,11 +1,18 @@
-Questo archivio contiene il materiale per il progetto del corso di
-High Performance Computing, laurea in Ingegneria e Scienze
-Informatiche, Universita' di Bologna sede di Cesena.
+Progetto di Nicolò Monaldini, matricola 0001031164
 
-Il file README (questo file) dovra' includere le istruzioni per la
-compilazione e l'esecuzione dei programmi consegnati; per comodita',
-nella directory src/ e' presente un Makefile. Si puo' modificare il
-Makefile fornito, oppure si puo' decidere di non usarlo ed effettuare
-la compilazione in modo manuale. In tal caso specificare in questo
-file i comandi da usare per la compilazione dei programmi.
+Per la compilazione del programma è stato utilizzato il Makefile allegato.
+
+Per compilare la versione OpenMP del programma:
+make omp-circles
+
+Per eseguire:
+./omp-circles [ncircles [iterations]]
+
+Per compilare la versione CUDA del programma:
+make cuda-circles
+
+Per eseguire:
+./cuda-circles [ncircles [iterations]]
+
+Sono presenti anche i target ALL e clean, rispettivamente per compilare tutti i programmi e per eliminare i file oggetto ed eseguibili generati.
 
