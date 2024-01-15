@@ -108,36 +108,6 @@ void update_circles( void ) {
     }
 }
 
-#ifdef MOVIE
-/**
- * Dumps the circles into a text file that can be processed using
- * gnuplot. This function may be used for debugging purposes, or to
- * produce a movie of how the algorithm works.
- *
- * You may want to completely remove this function from the final
- * version.
- */
-void dump_circles( int iterno )
-{
-    char fname[64];
-    snprintf(fname, sizeof(fname), "circles-%05d.gp", iterno);
-    FILE *out = fopen(fname, "w");
-    const float WIDTH = XMAX - XMIN;
-    const float HEIGHT = YMAX - YMIN;
-    fprintf(out, "set term png notransparent large\n");
-    fprintf(out, "set output \"circles-%05d.png\"\n", iterno);
-    fprintf(out, "set xrange [%f:%f]\n", XMIN - WIDTH*.2, XMAX + WIDTH*.2 );
-    fprintf(out, "set yrange [%f:%f]\n", YMIN - HEIGHT*.2, YMAX + HEIGHT*.2 );
-    fprintf(out, "set size square\n");
-    fprintf(out, "plot '-' with circles notitle\n");
-    for (int i=0; i<ncircles; i++) {
-        fprintf(out, "%f %f %f\n", circles[i].x, circles[i].y, circles[i].r);
-    }
-    fprintf(out, "e\n");
-    fclose(out);
-}
-#endif
-
 int main( int argc, char* argv[] )
 {
     int n = 10000;
@@ -158,17 +128,11 @@ int main( int argc, char* argv[] )
 
     init_circles(n);
     const double tstart_prog = hpc_gettime();
-#ifdef MOVIE
-    dump_circles(0);
-#endif
     for (int it=0; it<iterations; it++) {
         const double tstart_iter = hpc_gettime();
         const int n_overlaps = compute_forces();
         update_circles();
         const double elapsed_iter = hpc_gettime() - tstart_iter;
-#ifdef MOVIE
-        dump_circles(it+1);
-#endif
         printf("Iteration %d of %d, %d overlaps (%f s)\n", it+1, iterations, n_overlaps, elapsed_iter);
     }
     const double elapsed_prog = hpc_gettime() - tstart_prog;

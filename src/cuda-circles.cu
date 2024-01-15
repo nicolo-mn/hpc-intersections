@@ -129,36 +129,6 @@ void init_circles(int n)
     }
 }
 
-#ifdef MOVIE
-/**
- * Dumps the circles into a text file that can be processed using
- * gnuplot. This function may be used for debugging purposes, or to
- * produce a movie of how the algorithm works.
- *
- * You may want to completely remove this function from the final
- * version.
- */
-void dump_circles( int iterno, int ncircles )
-{
-    char fname[64];
-    snprintf(fname, sizeof(fname), "circles-cuda-%05d.gp", iterno);
-    FILE *out = fopen(fname, "w");
-    const float WIDTH = XMAX - XMIN;
-    const float HEIGHT = YMAX - YMIN;
-    fprintf(out, "set term png notransparent large\n");
-    fprintf(out, "set output \"circles-%05d.png\"\n", iterno);
-    fprintf(out, "set xrange [%f:%f]\n", XMIN - WIDTH*.2, XMAX + WIDTH*.2 );
-    fprintf(out, "set yrange [%f:%f]\n", YMIN - HEIGHT*.2, YMAX + HEIGHT*.2 );
-    fprintf(out, "set size square\n");
-    fprintf(out, "plot '-' with circles notitle\n");
-    for (int i=0; i<ncircles; i++) {
-        fprintf(out, "%f %f %f\n", circles->x[i], circles->y[i], circles->r[i]);
-    }
-    fprintf(out, "e\n");
-    fclose(out);
-}
-#endif
-
 int main( int argc, char* argv[] )
 {
     int n = 10000;
@@ -179,9 +149,6 @@ int main( int argc, char* argv[] )
 
     init_circles(n);
     const double tstart_prog = hpc_gettime();
-#ifdef MOVIE
-    dump_circles(0, n);
-#endif
     int n_overlaps;
     int *d_n_overlaps;
     circle_t *d_circles;
@@ -214,12 +181,6 @@ int main( int argc, char* argv[] )
         update_circles<<<(n+BLKDIM-1)/BLKDIM, BLKDIM>>>(d_circles, n);
         cudaCheckError();
         const double elapsed_iter = hpc_gettime() - tstart_iter;
-#ifdef MOVIE
-        cudaSafeCall( cudaMemcpy(circles->x, d_circles_x, n*sizeof(*circles->x), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->y, d_circles_y, n*sizeof(*circles->y), cudaMemcpyDeviceToHost) );
-        cudaSafeCall( cudaMemcpy(circles->r, d_circles_r, n*sizeof(*circles->r), cudaMemcpyDeviceToHost) );
-        dump_circles(it+1, n);
-#endif
         printf("Iteration %d of %d, %d overlaps (%f s)\n", it+1, iterations, n_overlaps, elapsed_iter);
     }
     const double elapsed_prog = hpc_gettime() - tstart_prog;
