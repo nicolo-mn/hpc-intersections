@@ -38,9 +38,7 @@ float randab(float a, float b)
 
 /**
  * Create and populate the array `circles[]` with randomly placed
- * circls.
- *
- * Do NOT parallelize this function.
+ * circles.
  */
 void init_circles(int n)
 {
@@ -68,6 +66,8 @@ void init_circles(int n)
 int compute_forces( void )
 {
     int n_intersections = 0;
+    /* each thread works with its own copy of the circles array
+       and the n_intersections variable to avoid race conditions */
     #pragma omp parallel for default(none) shared(circles, ncircles) \
     reduction(+:n_intersections) \
     reduction(+:circles_dx[:ncircles]) \

@@ -45,6 +45,7 @@ __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
 
     if (gindex < ncircles) {
         n_intersections[lindex] = 0;
+        /* each thread computes the displacements of one circle */
         for (int j=0; j<ncircles; j++) {
             const float deltax = circles->x[j] - circles->x[gindex];
             const float deltay = circles->y[j] - circles->y[gindex];
@@ -55,7 +56,6 @@ __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
                     n_intersections[lindex]++;
                 const float overlap = Rsum - dist;
                 assert(overlap > 0.0);
-                // avoid division by zero
                 const float overlap_x = overlap / (dist + EPSILON) * deltax;
                 const float overlap_y = overlap / (dist + EPSILON) * deltay;
                 my_dx -= overlap_x / K;
@@ -107,10 +107,8 @@ float randab(float a, float b)
 }
 
 /**
- * Create and populate the array `circles[]` with randomly placed
- * circls.
- *
- * Do NOT parallelize this function.
+ * Create and populate the struct of array `circles` with randomly placed
+ * circles.
  */
 void init_circles(int n)
 {
@@ -153,7 +151,7 @@ int main( int argc, char* argv[] )
     int *d_n_overlaps;
     circle_t *d_circles;
     float *d_circles_dx, *d_circles_dy, *d_circles_x, *d_circles_y, *d_circles_r;
-    // allocations
+    /* allocations */
     cudaSafeCall( cudaMalloc((void**)&d_n_overlaps, sizeof(*d_n_overlaps)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles, sizeof(*d_circles)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_x, n*sizeof(*d_circles_x)) );
@@ -161,13 +159,13 @@ int main( int argc, char* argv[] )
     cudaSafeCall( cudaMalloc((void**)&d_circles_r, n*sizeof(*d_circles_r)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_dx, n*sizeof(*d_circles_dx)) );
     cudaSafeCall( cudaMalloc((void**)&d_circles_dy, n*sizeof(*d_circles_dy)) );
-    // copies
+    /* copies */
     cudaSafeCall( cudaMemcpy(d_circles_x, circles->x, n*sizeof(*circles->x), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_y, circles->y, n*sizeof(*circles->y), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_r, circles->r, n*sizeof(*circles->r), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_dx, circles->dx, n*sizeof(*circles->dx), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(d_circles_dy, circles->dy, n*sizeof(*circles->dy), cudaMemcpyHostToDevice) );
-    // struct's pointers binding
+    /* struct's pointers binding */
     cudaSafeCall( cudaMemcpy(&d_circles->x, &d_circles_x, sizeof(d_circles_x), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(&d_circles->y, &d_circles_y, sizeof(d_circles_y), cudaMemcpyHostToDevice) );
     cudaSafeCall( cudaMemcpy(&d_circles->r, &d_circles_r, sizeof(d_circles_r), cudaMemcpyHostToDevice) );
