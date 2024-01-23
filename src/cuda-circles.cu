@@ -39,13 +39,16 @@ __global__ void compute_forces( circle_t *circles, int *result, int ncircles ) {
     float my_dy = 0.0;
     int bsize = blockDim.x / 2;
 
+    /* thread with global index 0 initializes the variable 
+       that will contain the number of intersections */
     if (gindex == 0) {
         *result = 0;
     }
 
     if (gindex < ncircles) {
         n_intersections[lindex] = 0;
-        /* each thread computes the displacements of one circle */
+        /* each thread computes the displacements 
+           and intersections of one circle */
         for (int j=0; j<ncircles; j++) {
             const float deltax = circles->x[j] - circles->x[gindex];
             const float deltay = circles->y[j] - circles->y[gindex];
